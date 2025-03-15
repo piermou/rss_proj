@@ -18,11 +18,11 @@ func responWithError(w http.ResponseWriter, code int, msg string) {
 	})
 }
 
-func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
+func respondWithJSON(w http.ResponseWriter, code int, payload any) {
 	dat, err := json.Marshal(payload)
 
 	if err != nil {
-		log.Println("Failed to JSON response: %v", payload)
+		log.Println("Failed to JSON response:", payload)
 		w.WriteHeader(500)
 		return
 	}
