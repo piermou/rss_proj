@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/piermou/rss_proj/internal/auth"
 	"github.com/piermou/rss_proj/internal/database"
 )
 
@@ -29,7 +28,7 @@ func (apiCfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Reques
 	params := parameters{}
 	err := decoder.Decode(&params)
 	if err != nil {
-		responWithError(w, 400, fmt.Sprintf("error parsing JSON:", err))
+		responWithError(w, 400, fmt.Sprintln("error parsing JSON:", err))
 		return
 	}
 
@@ -47,17 +46,47 @@ func (apiCfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Reques
 	respondWithJSON(w, 201, databaseUserToUser(user))
 }
 
-func (apiCfg *apiConfig) handlerGetUser(w http.ResponseWriter, r *http.Request) {
-	apiKey, err := auth.GetAPIKey(r.Header)
-	if err != nil {
-		responWithError(w, 403, fmt.Sprintf("auth error: %v", err))
-		return
+func (apiCfg *apiConfig) handlerGetUser(w http.ResponseWriter, r *http.Request, user database.User) {
+
+	respondWithJSON(w, 200, databaseUserToUser(user))
+}
+
+func (apiCfg *apiConfig) handlerCreateFeed(w http.ResponseWriter, r *http.Request, user database.User) {
+	type parameters struct {
+		Name string `json:"name"`
+		URL  string `json:"url"`
 	}
-	user, err := apiCfg.DB.GetUSerByAPIKey(r.Context(), apiKey)
+	decoder := json.NewDecoder(r.Body)
+	params := parameters{}
+	err := decoder.Decode(&params)
 	if err != nil {
-		responWithError(w, 403, fmt.Sprintf("auth error : %v", err))
+		responWithError(w, 400, fmt.Sprintln("error parsing JSON:", err))
 		return
 	}
 
-	respondWithJSON(w, 200, databaseUserToUser(user))
+	feed, err := apiCfg.DB.CreateFeed(r.Context(), database.CreateFeedParams{
+		ID:        uuid.New(),
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+		Name:      params.Name,
+		Url:       params.URL,
+		UserID:    user.ID,
+	})
+
+	if err != nil {
+		responWithError(w, 400, fmt.Sprintf("NOP create users: %v", err))
+	}
+
+	respondWithJSON(w, 201, databaseFeedToFeed(feed))
+}
+
+func (apiCfg *apiConfig) handlerGetFeeds(w http.ResponseWriter, r *http.Request) {
+
+	feeds, err := apiCfg.DB.GetFeeds(r.Context())
+	if err != nil {
+		responWithError(w, 400, fmt.Sprintf("couldn't get feed: %v", err))
+		return
+	}
+
+	respondWithJSON(w, 201, databaseFeedsToFeeds(feeds))
 }
